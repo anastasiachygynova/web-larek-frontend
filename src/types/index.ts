@@ -50,8 +50,8 @@ export interface OrderView {
 export type ApiPostMethods = 'POST' | 'PUT' | 'DELETE';
 
 export interface IApiClient {
-	get<T = any>(uri: string): Promise<T>;
-	post<T = any>(uri: string, data: object, method?: ApiPostMethods): Promise<T>;
+	get<T = unknown>(uri: string): Promise<T>;
+	post<T = unknown>(uri: string, data: object, method?: ApiPostMethods): Promise<T>;
 }
 
 export type ApiListResponse<Type> = {
@@ -62,15 +62,15 @@ export type ApiListResponse<Type> = {
 // Интерфейсы базовых классов
 
 export type EventName = string | RegExp;
-export type Subscriber = (...args: any[]) => void;
+export type Subscriber = (...args: unknown[]) => void;
 
 export interface IEvents {
-	on<T = any>(event: EventName, callback: (data: T) => void): void;
+	on<T = unknown>(event: EventName, callback: (data: T) => void): void;
 	off(event: EventName, callback: Subscriber): void;
-	emit<T = any>(event: string, data?: T): void;
+	emit<T = unknown>(event: string, data?: T): void;
 	onAll?(callback: (event: EmitterEvent) => void): void;
 	offAll?(): void;
-	trigger?<T = any>(event: string, context?: Partial<T>): (data: T) => void;
+	trigger?<T = unknown>(event: string, context?: Partial<T>): (data: T) => void;
 }
 
 export interface EmitterEvent {
