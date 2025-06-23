@@ -1,6 +1,6 @@
 # Проектная работа "Веб-ларек"
 
-Стек: HTML, SCSS, TS, Webpack
+Стек: HTML, SCSS, TS, Webpack, PostCSS, Node.js (npm/yarn)
 
 Структура проекта:
 - src/ — исходные файлы проекта
