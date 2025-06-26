@@ -83,7 +83,7 @@ export interface EmitterEvent<T = unknown> {
   data: T;
 }
 
-// Перечисления событий и их интерфейсы
+// События и их интерфейсы
 
 export enum AppEvent {
   ProductAdded = 'product:added',
