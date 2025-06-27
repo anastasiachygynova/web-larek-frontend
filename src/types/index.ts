@@ -5,13 +5,19 @@ export interface Product {
   title: string;
   description: string;
   category: string;
-  price: number;
+  price: number | null;
   image: string;
+}
+
+// Производный тип для отображения товара на экране
+export interface ProductView extends Product {
+  priceFormatted: string;
+  isInCart: boolean;
 }
 
 export interface Order {
   id: string;
-  items: Product[];
+  items: string[];
   total: number;
   address: string;
   email: string;
@@ -19,27 +25,12 @@ export interface Order {
   payment: 'card' | 'cash';
 }
 
+export interface OrderView extends Order {
+  totalFormatted: string;
+  paymentLabel: string;
+}
+
 export interface User {
-  id: string;
-  email: string;
-  phone: string;
-}
-
-// Интерфейсы отображения
-
-export interface ProductView {
-  id: string;
-  title: string;
-  price: string;
-  image: string;
-  category: string;
-  description?: string;
-}
-
-export interface OrderView {
-  id: string;
-  items: ProductView[];
-  total: string;
   address: string;
   email: string;
   phone: string;
@@ -86,10 +77,18 @@ export interface EmitterEvent<T = unknown> {
 // События и их интерфейсы
 
 export enum AppEvent {
-  ProductAdded = 'product:added',
-  ProductRemoved = 'product:removed',
-  OrderCreated = 'order:created',
-  OrderFailed = 'order:failed',
+  ProductAdded = 'product:added', // Товар добавлен в корзину
+  ProductRemoved = 'product:removed', // Товар удалён из корзины
+  OrderCreated = 'order:created', // Заказ успешно оформлен
+  ProductSelected = 'product:selected', // Открыта карточка товара
+  CartOpened = 'cart:opened', // Открыта корзина
+  CartClosed = 'cart:closed', // Закрыта корзина
+  CartCleared = 'cart:cleared', // Корзина очищена
+  OrderSubmitted = 'order:submitted', // Пользователь отправил форму заказа
+  OrderCancelled = 'order:cancelled', // Заказ отменён пользователем
+  PaymentMethodChanged = 'payment:changed', // Изменён способ оплаты
+  ModalOpened = 'modal:opened', // Открыто модальное окно
+  ModalClosed = 'modal:closed', // Закрыто модальное окно
 }
 
 // Вспомогательные типы
