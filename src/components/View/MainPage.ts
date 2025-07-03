@@ -1,18 +1,18 @@
 // src/components/View/MainPageView.ts
+import { IEvents } from './base/events';
 
-import type { Product } from '../../types';
+import { IEvents } from 'путь/к/интерфейсу'; // Укажите правильный путь к IEvents
 
 export class MainPageView {
-	private root: HTMLElement;
-	private openCartButton: HTMLButtonElement;
-	private cartCountElement: HTMLElement;
-	private catalogContainer: HTMLElement;
+	protected cartCounter: HTMLElement;
+	protected basketButton: HTMLButtonElement;
+	protected catalogContainer: HTMLElement;
 
-	constructor(root: HTMLElement) {}
+	constructor(protected container: HTMLElement, protected events: IEvents) {}
 
-	onOpenCart(callback: () => void): void {}
+	set catalog(items: HTMLElement[]) {}
 
-	updateCartCount(count: number): void {}
+	setCartCounter(count: number): void {}
 
-	renderCatalog(products: Product[]): void {}
+	set locked(value: boolean) {}
 }
