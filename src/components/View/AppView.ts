@@ -1,8 +1,12 @@
+
 import { EventEmitter } from '../base/events';
 import { ProductView } from './ProductView';
 import { ProductPreview } from './ProductPreview';
 import { BasketView } from './BasketView';
 import { ModalView } from './ModalView';
+import { PaymentModalView } from './PaymentModalView';
+import { ContactsModalView } from './ContactsModalView';
+import { OrderSuccessModal } from './OrderSuccessModal';
 import { ApiModel } from '../Model/ApiModel';
 import { BasketModel } from '../Model/BasketModel';
 import { IProduct } from '../../types';
@@ -60,6 +64,39 @@ export class AppView {
       this.basketModel.addProduct(item);
       this.updateBasketCounter();
       this.modal.close();
+    });
+    
+    this.eventEmitter.on('basket:open', () => {
+      this.openBasketModal();
+    });
+    
+    this.eventEmitter.on('order:open', () => {
+      this.openOrderModal();
+    });
+    
+    this.eventEmitter.on('contacts:open', () => {
+      this.openContactsModal();
+    });
+    
+    this.eventEmitter.on('success:open', () => {
+      this.openSuccessModal();
+    });
+    
+    this.eventEmitter.on('success:close', () => {
+      this.modal.close();
+      this.basketModel.clear();
+      this.updateBasketCounter();
+    });
+    
+    // Обработчики валидации форм
+    this.eventEmitter.on('formErrors:address', (errors: any) => {
+      // Здесь можно добавить логику отображения ошибок
+      console.log('Form errors (address):', errors);
+    });
+    
+    this.eventEmitter.on('formErrors:change', (errors: any) => {
+      // Здесь можно добавить логику отображения ошибок
+      console.log('Form errors (contacts):', errors);
     });
   }
 
@@ -123,6 +160,47 @@ export class AppView {
     const productPreview = new ProductPreview(tplProductPreview, this.eventEmitter);
     
     this.modal.content = productPreview.render(item, this.basketModel.items);
+    this.modal.render();
+  }
+  
+  private openBasketModal() {
+    this.modal.content = this.basketView.render();
+    this.modal.render();
+  }
+  
+  private openOrderModal() {
+    const tplOrder = document.querySelector('#order') as HTMLTemplateElement;
+    if (!tplOrder) {
+      console.error('AppView: Шаблон order не найден');
+      return;
+    }
+    
+    const orderModal = new PaymentModalView(tplOrder, this.eventEmitter);
+    this.modal.content = orderModal.render();
+    this.modal.render();
+  }
+  
+  private openContactsModal() {
+    const tplContacts = document.querySelector('#contacts') as HTMLTemplateElement;
+    if (!tplContacts) {
+      console.error('AppView: Шаблон contacts не найден');
+      return;
+    }
+    
+    const contactsModal = new ContactsModalView(tplContacts, this.eventEmitter);
+    this.modal.content = contactsModal.render();
+    this.modal.render();
+  }
+  
+  private openSuccessModal() {
+    const tplSuccess = document.querySelector('#success') as HTMLTemplateElement;
+    if (!tplSuccess) {
+      console.error('AppView: Шаблон success не найден');
+      return;
+    }
+    
+    const successModal = new OrderSuccessModal(tplSuccess, this.eventEmitter);
+    this.modal.content = successModal.render(this.basketModel.getTotal());
     this.modal.render();
   }
 }

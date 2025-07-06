@@ -8,8 +8,7 @@ import { CDN_URL, API_URL } from './utils/constants';
 import { EventEmitter } from './components/base/events';
 import { IProduct } from './types';
 import { ensureElement } from './utils/utils';
-import { ProductPreview } from './components/View//ProductPreview';
-import { ModalView } from './components/View/ModalView';
+
 
 // Получение шаблонов
 const tplCardCatalog = document.querySelector(
@@ -35,21 +34,8 @@ events.on('products:receive', () => {
 	});
 });
 
-events.on('card:select', (item: IProduct) => {
-	dataCatalog.setPreview(item);
-});
+
 
 // Инициализация главного представления приложения
 new AppView(events, apiModel, basketModel, dataCatalog);
 
-// Модальное окно карточки
-
-events.on('modalCard:open', (item: IProduct) => {
-  const tplProductPreview = document.querySelector('#card-preview') as HTMLTemplateElement;
-  const modalContainer = ensureElement<HTMLElement>('#modal-container');
-  const modal = new ModalView(modalContainer, events);
-  
-  const productPreview = new ProductPreview(tplProductPreview, events);
-  modal.content = productPreview.render(item, basketModel.items);
-  modal.render();
-});
