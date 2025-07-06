@@ -1,13 +1,32 @@
-import { Api } from '../base/api';
-import { Product, Order } from '../../types';
+import { ApiListResponse, Api } from '../base/api';
+import { IProduct, IOrderRequest, IOrderResult } from '../../types';
+
+export interface ApiModelInterface {
+  cdn: string;
+  items: IProduct[];
+  getProductList: () => Promise<IProduct[]>;
+  placeOrder: (order: IOrderRequest) => Promise<IOrderResult>;
+}
 
 export class ApiModel extends Api {
-	protected items: Product[] = [];
+  cdn: string;
+  items: IProduct[] = [];
 
-	constructor(baseUrl: string, options: RequestInit = {}) {
-		//
-	}
-	getProductList(): Promise<Product[]> {}
+  constructor(cdn: string, baseUrl: string, options?: RequestInit) {
+    super(baseUrl, options);
+    this.cdn = cdn;
+  }
 
-	placeOrder(): Promise<any> {}
+  getProductList(): Promise<IProduct[]> {
+    return this.get('/product').then((data: ApiListResponse<IProduct>) =>
+      data.items.map((item) => ({
+        ...item,
+        image: this.cdn + item.image,
+      }))
+    );
+  }
+
+  placeOrder(order: IOrderRequest): Promise<IOrderResult> {
+    return this.post(`/order`, order).then((data: IOrderResult) => data);
+  }
 }

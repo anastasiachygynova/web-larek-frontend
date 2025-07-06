@@ -1,24 +1,32 @@
-export class OrderSuccessModal {
-  private modalElement: HTMLElement;
-  private amountElement: HTMLElement;
-  private closeButton: HTMLElement;
-  private continueButton: HTMLElement;
+import { IEvents } from "../base/events";
 
-  constructor(modalElement: HTMLElement) {
-    this.modalElement = modalElement;
-    this.amountElement = modalElement.querySelector(
-      '.order-success__amount'
-    ) as HTMLElement;
-    this.closeButton = modalElement.querySelector(
-      '.modal__close'
-    ) as HTMLElement;
-    this.continueButton = modalElement.querySelector(
-      '.order-success__continue'
-    ) as HTMLElement;
-  }
+export interface ISuccess {
+  success: HTMLElement;
+  description: HTMLElement;
+  button: HTMLButtonElement;
+  render(total: number): HTMLElement;
 }
 
-render(total: number) {
-  this.description.textContent = String(`Списано ${total} синапсов`);
-  return this.success
+export class OrderSuccessModal implements ISuccess {
+  success: HTMLElement;
+  description: HTMLElement;
+  button: HTMLButtonElement;
+
+  constructor(template: HTMLTemplateElement, protected events: IEvents) {
+    this.success = template.content.querySelector('.order-success')?.cloneNode(true) as HTMLElement;
+    if (!this.success) throw new Error('.order-success not found in template');
+
+    this.description = this.success.querySelector('.order-success__description') as HTMLElement;
+    if (!this.description) throw new Error('.order-success__description not found in template');
+
+    this.button = this.success.querySelector('.order-success__close') as HTMLButtonElement;
+    if (!this.button) throw new Error('.order-success__close not found in template');
+
+    this.button.addEventListener('click', () => { this.events.emit('success:close'); });
+  }
+
+  render(total: number): HTMLElement {
+    this.description.textContent = `Списано ${total} синапсов`;
+    return this.success;
+  }
 }
