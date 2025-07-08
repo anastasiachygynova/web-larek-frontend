@@ -1,5 +1,4 @@
 import { EventEmitter } from '../base/events';
-import { ProductView } from './ProductView';
 import { ProductPreview } from './ProductPreview';
 import { BasketView } from './BasketView';
 import { ModalView } from './ModalView';
