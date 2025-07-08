@@ -53,7 +53,7 @@ export class BasketView implements IBasket {
   }
   
   updateTotalPrice(sum: number) {
-    this.priceElement.textContent = String(sum + ' синапсов');
+    this.priceElement.textContent = `${sum} синапсов`;
   }
 
   render() {

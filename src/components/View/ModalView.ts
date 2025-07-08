@@ -26,18 +26,27 @@ export class ModalView implements IModal {
 
 		this.closeButton.addEventListener('click', this.close.bind(this));
 		this.modalContainer.addEventListener('click', this.close.bind(this));
-		this.modalContainer.querySelector('.modal__container').addEventListener('click', (event) => event.stopPropagation());
-		
+		this.modalContainer
+			.querySelector('.modal__container')
+			.addEventListener('click', (event) => event.stopPropagation());
+
 		// Добавляем обработчик для закрытия по Escape
 		document.addEventListener('keydown', (event) => {
-			if (event.key === 'Escape' && this.modalContainer.classList.contains('modal_active')) {
+			if (
+				event.key === 'Escape' &&
+				this.modalContainer.classList.contains('modal_active')
+			) {
 				this.close();
 			}
 		});
 	}
 
 	set content(value: HTMLElement | null) {
+		if (value) {
 			this._content.replaceChildren(value);
+		} else {
+			this._content.replaceChildren();
+		}
 	}
 
 	open(): void {
@@ -47,10 +56,15 @@ export class ModalView implements IModal {
 	}
 
 	close(): void {
+		const isSuccessModal = this._content.querySelector('.order-success');
 		this.modalContainer.classList.remove('modal_active');
 		this.content = null;
 		this.locked = false;
-		this.events.emit('modal:close');
+		if (isSuccessModal) {
+			this.events.emit('success:close');
+		} else {
+			this.events.emit('modal:close');
+		}
 	}
 
 	set locked(value: boolean) {

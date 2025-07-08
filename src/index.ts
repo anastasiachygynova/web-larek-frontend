@@ -6,7 +6,6 @@ import { ProductView } from './components/View/ProductView';
 import { AppView } from './components/View/AppView';
 import { CDN_URL, API_URL } from './utils/constants';
 import { EventEmitter } from './components/base/events';
-import { IProduct } from './types';
 import { ensureElement } from './utils/utils';
 
 

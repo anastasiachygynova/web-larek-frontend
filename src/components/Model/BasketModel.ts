@@ -1,49 +1,59 @@
-import { IProduct } from "../../types";
+import { IProduct } from '../../types';
 
 export interface IBasketModelContract {
-  items: IProduct[]; //  — массив товаров в корзине.
-  addProduct(product: IProduct): void; // - добавляет товар в корзину.
-  getCount: () => number; // -возвращает количество товаров в корзине.
-  getTotal: () => number; // — возвращает сумму всех товаров в корзине.
-  removeProduct(product: IProduct): void;
-  clear(): void;
+	items: IProduct[];
+	addProduct(product: IProduct): void;
+	getCount: () => number;
+	getTotal: () => number;
+	removeProduct(product: IProduct): void;
+	clear(): void;
+	cleanInvalidItems(): void;
 }
 
 export class BasketModel implements IBasketModelContract {
-  protected _items: IProduct[] = [];
+	protected _items: IProduct[] = [];
 
-  set items(data: IProduct[]) {
-    this._items = data;
-  }
+	set items(data: IProduct[]) {
+		this._items = data;
+	}
 
-  get items() {
-    return this._items;
-  }
+	get items() {
+		return this._items;
+	}
 
-  // Количество товаров в корзине
-  getCount(): number {
-    return this.items.length;
-  }
+	getCount(): number {
+		return this.items.filter((item) => item && item.id != null).length;
+	}
 
-  // Сумма всех товаров в корзине
-  getTotal(): number {
-    return this.items.reduce((sum, item) => sum + (item.price ?? 0), 0);
-  }
+	getTotal(): number {
+		return this.items
+			.filter((item) => item && item.id != null)
+			.reduce((sum, item) => sum + (item.price ?? 0), 0);
+	}
 
-  // Добавить товар в корзину
-  addProduct(product: IProduct): void {
-    if (!this._items.some(item => item.id === product.id)) {
-      this._items.push(product);
-    }
-  }
+	addProduct(product: IProduct): void {
+		if (!product || !product.id) {
+			return;
+		}
 
-  // Удалить товар из корзины
-  removeProduct(product: IProduct): void {
-    this._items = this._items.filter(item => item.id !== product.id);
-  }
+		if (!this._items.some((item) => item && item.id === product.id)) {
+			this._items.push(product);
+		}
+	}
 
-  // Очистить корзину
-  clear(): void {
-    this.items = [];
-  }
+	removeProduct(product: IProduct): void {
+		if (!product || !product.id) {
+			return;
+		}
+
+		this._items = this._items.filter((item) => item && item.id !== product.id);
+	}
+
+	clear(): void {
+		this.items = [];
+	}
+
+	cleanInvalidItems(): void {
+		this._items = this._items.filter((item) => item && item.id != null);
+	}
 }
