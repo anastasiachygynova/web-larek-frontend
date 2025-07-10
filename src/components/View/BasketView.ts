@@ -23,18 +23,16 @@ export class BasketView implements IBasket {
   headerButton: HTMLButtonElement;
   headerCounter: HTMLElement;
   
-  constructor(template: HTMLTemplateElement, protected events: IEvents) {
+  constructor(template: HTMLTemplateElement, protected events: IEvents, headerButton: HTMLButtonElement, headerCounter: HTMLElement) {
     this.element = template.content.querySelector('.basket').cloneNode(true) as HTMLElement;
     this.titleElement = this.element.querySelector('.modal__title');
     this.listElement = this.element.querySelector('.basket__list');
     this.orderButton = this.element.querySelector('.basket__button');
     this.priceElement = this.element.querySelector('.basket__price');
-    this.headerButton = document.querySelector('.header__basket');
-    this.headerCounter = document.querySelector('.header__basket-counter');
-    
+    this.headerButton = headerButton;
+    this.headerCounter = headerCounter;
     this.orderButton.addEventListener('click', () => { this.events.emit('order:open') });
     this.headerButton.addEventListener('click', () => { this.events.emit('basket:open') });
-
     this.items = [];
   }
 

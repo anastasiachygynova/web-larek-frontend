@@ -3,18 +3,17 @@ import { ApiModel } from './components/Model/ApiModel';
 import { BasketModel } from './components/Model/BasketModel';
 import { DataCatalog } from './components/Model/DataCatalog';
 import { ProductView } from './components/View/ProductView';
-import { AppView } from './components/View/AppView';
+import { MainPageView } from './components/View/MainPageView';
 import { CDN_URL, API_URL } from './utils/constants';
 import { EventEmitter } from './components/base/events';
 import { ensureElement } from './utils/utils';
 
 
-// Получение шаблонов
+
 const tplCardCatalog = document.querySelector(
 	'#card-catalog'
 ) as HTMLTemplateElement;
 
-// Инициализация моделей и событий
 const apiModel = new ApiModel(CDN_URL, API_URL);
 const events = new EventEmitter();
 const dataCatalog = new DataCatalog(events);
@@ -35,6 +34,6 @@ events.on('products:receive', () => {
 
 
 
-// Инициализация главного представления приложения
-new AppView(events, apiModel, basketModel, dataCatalog);
+
+new MainPageView(events, apiModel, basketModel, dataCatalog);
 

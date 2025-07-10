@@ -30,7 +30,7 @@ export class ModalView implements IModal {
 			.querySelector('.modal__container')
 			.addEventListener('click', (event) => event.stopPropagation());
 
-		// Добавляем обработчик для закрытия по Escape
+		
 		document.addEventListener('keydown', (event) => {
 			if (
 				event.key === 'Escape' &&

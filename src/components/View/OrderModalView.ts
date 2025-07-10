@@ -1,5 +1,5 @@
 import { IEvents } from '../base/events';
-
+import { FormView } from './FormView';
 
 export interface IOrder {
 	formOrder: HTMLFormElement;
@@ -9,138 +9,158 @@ export interface IOrder {
 	render(): HTMLElement;
 }
 
-
 export interface IContactsModal {
-  formContacts: HTMLFormElement;
-  inputAll: HTMLInputElement[];
-  buttonSubmit: HTMLButtonElement;
-  formErrors: HTMLElement;
-  render(): HTMLElement;
-}
-
-// Единый интерфейс для управления заказом
-export interface IOrderModal {
-  currentStep: 'payment' | 'contacts';
-  paymentView: PaymentModalView;
-  contactsView: ContactsModalView;
-  setStep(step: 'payment' | 'contacts'): void;
-  render(): HTMLElement;
-}
-
-
-export class OrderModalView implements IOrderModal {
-  currentStep: 'payment' | 'contacts' = 'payment';
-  paymentView: PaymentModalView;
-  contactsView: ContactsModalView;
-
-  constructor(
-    paymentTemplate: HTMLTemplateElement,
-    contactsTemplate: HTMLTemplateElement,
-    protected events: IEvents
-  ) {
-    this.paymentView = new PaymentModalView(paymentTemplate, events);
-    this.contactsView = new ContactsModalView(contactsTemplate, events);
-  }
-
-  setStep(step: 'payment' | 'contacts') {
-    this.currentStep = step;
-  }
-
-  render(): HTMLElement {
-    if (this.currentStep === 'payment') {
-      return this.paymentView.render();
-    } else {
-      return this.contactsView.render();
-    }
-  }
-}
-
-
-export class PaymentModalView implements IOrder {
-	formOrder: HTMLFormElement;
-	buttonAll: HTMLButtonElement[];
+	formContacts: HTMLFormElement;
+	inputAll: HTMLInputElement[];
 	buttonSubmit: HTMLButtonElement;
 	formErrors: HTMLElement;
+	render(): HTMLElement;
+}
 
-	constructor(template: HTMLTemplateElement, protected events: IEvents) {
-		this.formOrder = template.content
-			.querySelector('.form')
-			.cloneNode(true) as HTMLFormElement;
-		this.buttonAll = Array.from(this.formOrder.querySelectorAll('.button_alt'));
-		this.buttonSubmit = this.formOrder.querySelector('.order__button');
-		this.formErrors = this.formOrder.querySelector('.form__errors');
+export class OrderModalView {
+	private container: HTMLElement;
 
+	constructor(container: HTMLElement) {
+		this.container = container;
+	}
+
+	show(content: HTMLElement) {
+		this.container.innerHTML = '';
+		this.container.appendChild(content);
+	}
+}
+
+export class PaymentModalView extends FormView {
+	buttonAll: HTMLButtonElement[];
+	paymentSelection = '';
+	private touchedAddress = false;
+
+	constructor(template: HTMLTemplateElement, events: IEvents) {
+		super(template, events, {
+			form: '.form',
+			input: '.form__input',
+			button: '.order__button',
+			errors: '.form__errors'
+		});
+		this.buttonAll = Array.from(this.form.querySelectorAll('.button_alt'));
 		this.buttonAll.forEach((item) => {
 			item.addEventListener('click', () => {
-				this.paymentSelection = item.name;
-				this.events.emit('order:paymentSelection', item);
+				this.touchedAddress = true;
+				this.events.emit('payment:select', { method: item.name });
+				this.updateButtonState();
 			});
 		});
-
-		this.formOrder.addEventListener('input', (event: Event) => {
+		this.form.addEventListener('input', (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			if (target && target.name === 'address') {
-				this.events.emit('order:changeAddress', { field: 'address', value: target.value });
+				this.events.emit('order:changeAddress', {
+					field: 'address',
+					value: target.value,
+				});
 			}
 		});
-
-		this.formOrder.addEventListener('submit', (event: Event) => {
+		this.form.addEventListener('submit', (event: Event) => {
 			event.preventDefault();
-			if (this.buttonSubmit.disabled) {
+			if (this.submitButton.disabled) {
 				return;
 			}
 			this.events.emit('contacts:open');
 		});
 	}
 
-	set paymentSelection(paymentMethod: string) {
-		this.buttonAll.forEach((item) => {
-			item.classList.toggle('button_alt-active', item.name === paymentMethod);
+	updatePaymentSelection(method: string) {
+		this.paymentSelection = method;
+		this.buttonAll.forEach((btn) => {
+			btn.classList.toggle('button_alt-active', btn.name === method);
 		});
 	}
 
-	set valid(value: boolean) {
-		this.buttonSubmit.disabled = !value;
-	}
+	updateButtonState() {
+		const address = this.inputs.find((i) => i.name === 'address')?.value.trim() || '';
+		const paymentSelected = this.buttonAll.some((btn) => btn.classList.contains('button_alt-active'));
+		let valid = true;
+		let error = '';
 
-	render() {
-		return this.formOrder;
+		if (!address) {
+			valid = false;
+			if (this.touchedAddress) error = 'Необходимо указать адрес';
+		} else if (!paymentSelected) {
+			valid = false;
+			error = 'Необходимо выбрать способ оплаты';
+		}
+
+		this.setError(error);
+		this.submitButton.disabled = !valid;
 	}
 }
 
+export class ContactsModalView extends FormView {
+	private touchedEmail = false;
+	private touchedPhone = false;
 
-export class ContactsModalView implements IContactsModal {
-  formContacts: HTMLFormElement;
-  inputAll: HTMLInputElement[];
-  buttonSubmit: HTMLButtonElement;
-  formErrors: HTMLElement;
+	constructor(template: HTMLTemplateElement, events: IEvents) {
+		super(template, events, {
+			form: '.form',
+			input: '.form__input',
+			button: '.button',
+			errors: '.form__errors'
+		});
+		this.inputs.forEach((item) => {
+			item.addEventListener('input', (event) => {
+				const target = event.target as HTMLInputElement;
+				const field = target.name;
+				const value = target.value;
+				this.events.emit(`contacts:changeInput`, { field, value });
+				this.updateButtonState();
+			});
+			item.addEventListener('blur', (event) => {
+				const target = event.target as HTMLInputElement;
+				if (target.name === 'email') {
+					this.touchedEmail = true;
+				} else if (target.name === 'phone') {
+					this.touchedPhone = true;
+				}
+				this.updateButtonState();
+			});
+		});
+		this.form.addEventListener('submit', (event: Event) => {
+			event.preventDefault();
+			this.events.emit('success:open');
+		});
+		this.updateButtonState();
+	}
 
-  constructor(template: HTMLTemplateElement, protected events: IEvents) {
-    this.formContacts = template.content.querySelector('.form').cloneNode(true) as HTMLFormElement;
-    this.inputAll = Array.from(this.formContacts.querySelectorAll('.form__input'));
-    this.buttonSubmit = this.formContacts.querySelector('.button');
-    this.formErrors = this.formContacts.querySelector('.form__errors');
+	validateEmail(email: string): boolean {
+		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+	}
 
-    this.inputAll.forEach(item => {
-      item.addEventListener('input', (event) => {
-        const target = event.target as HTMLInputElement;
-        const field = target.name;
-        const value = target.value;
-        this.events.emit(`contacts:changeInput`, { field, value });
-      });
-    });
+	validatePhone(phone: string): boolean {
+		
+		const digits = phone.replace(/\D/g, '');
+		return digits.length >= 10;
+	}
 
-    this.formContacts.addEventListener('submit', (event: Event) => {
-      event.preventDefault();
-      this.events.emit('success:open');
-    });
-  }
+	updateButtonState() {
+		const email = this.inputs.find((i) => i.name === 'email')?.value.trim() || '';
+		const phone = this.inputs.find((i) => i.name === 'phone')?.value.trim() || '';
+		let valid = true;
+		let error = '';
 
-  set valid(value: boolean) {
-    this.buttonSubmit.disabled = !value;
-  }
+		if (!email) {
+			valid = false;
+			if (phone) error = 'Необходимо указать email';
+		} else if (!this.validateEmail(email)) {
+			valid = false;
+			if (this.touchedEmail) error = 'Некорректный email';
+		} else if (!phone) {
+			valid = false;
+			if (this.touchedPhone) error = 'Необходимо указать телефон';
+		} else if (!this.validatePhone(phone)) {
+			valid = false;
+			if (this.touchedPhone) error = 'Некорректный телефон';
+		}
 
-  render() {
-    return this.formContacts;
-  }
-} 
+		this.setError(error);
+		this.submitButton.disabled = !valid;
+	}
+}
