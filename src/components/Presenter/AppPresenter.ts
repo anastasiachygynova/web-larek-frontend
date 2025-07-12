@@ -135,6 +135,14 @@ export class AppPresenter {
 				this.openBasketModal();
 			}
 		});
+		on('modal:close', () => {
+			if (this.currentPaymentModalView) {
+				this.currentPaymentModalView.clearError();
+			}
+			if (this.currentContactsModalView) {
+				this.currentContactsModalView.clearError();
+			}
+		});
 
 		on('payment:select', (payload: { method: string }) => {
 			this.orderForm.setPayment(payload.method);
@@ -255,6 +263,11 @@ export class AppPresenter {
 
 		this.currentPaymentModalView = paymentView;
 		this.currentContactsModalView = contactsView;
+
+		// Сброс ошибок и состояния формы перед показом
+		paymentView.clearError();
+		contactsView.clearError();
+		this.orderForm.clear();
 
 		this.orderModalView.show(paymentView.render());
 
