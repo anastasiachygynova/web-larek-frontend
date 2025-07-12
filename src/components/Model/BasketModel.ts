@@ -1,4 +1,5 @@
 import { IProduct } from '../../types';
+import { EventEmitter } from '../base/events';
 
 export interface IBasketModelContract {
 	items: IProduct[];
@@ -12,9 +13,15 @@ export interface IBasketModelContract {
 
 export class BasketModel implements IBasketModelContract {
 	protected _items: IProduct[] = [];
+	public eventEmitter: EventEmitter;
+
+	constructor(eventEmitter: EventEmitter) {
+		this.eventEmitter = eventEmitter;
+	}
 
 	set items(data: IProduct[]) {
 		this._items = data;
+		this.eventEmitter.emit('basket:changed', this._items);
 	}
 
 	get items() {
@@ -38,6 +45,7 @@ export class BasketModel implements IBasketModelContract {
 
 		if (!this._items.some((item) => item && item.id === product.id)) {
 			this._items.push(product);
+			this.eventEmitter.emit('basket:changed', this._items);
 		}
 	}
 
@@ -47,13 +55,16 @@ export class BasketModel implements IBasketModelContract {
 		}
 
 		this._items = this._items.filter((item) => item && item.id !== product.id);
+		this.eventEmitter.emit('basket:changed', this._items);
 	}
 
 	clear(): void {
 		this.items = [];
+		this.eventEmitter.emit('basket:changed', this._items);
 	}
 
 	cleanInvalidItems(): void {
 		this._items = this._items.filter((item) => item && item.id != null);
+		this.eventEmitter.emit('basket:changed', this._items);
 	}
 }

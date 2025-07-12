@@ -12,6 +12,7 @@ export class ProductPreview extends ProductView implements ICard {
 	text: HTMLElement;
 	button: HTMLElement;
 	private currentProduct: IProduct | null = null;
+	private currentBasketItems: IProduct[] = [];
 
 	constructor(
 		template: HTMLTemplateElement,
@@ -23,7 +24,8 @@ export class ProductPreview extends ProductView implements ICard {
 		this.button = this._cardElement.querySelector('.card__button');
 		this.button.addEventListener('click', () => {
 			if (this.currentProduct) {
-				if (this.button.dataset.inBasket === 'true') {
+				const inBasket = this.currentBasketItems.some((item) => item && item.id === this.currentProduct.id);
+				if (inBasket) {
 					this.events.emit('card:removeBasket', this.currentProduct);
 				} else {
 					this.events.emit('card:addBasket', this.currentProduct);
@@ -34,6 +36,7 @@ export class ProductPreview extends ProductView implements ICard {
 
 	render(data: IProduct, basketItems: IProduct[] = []): HTMLElement {
 		this.currentProduct = data;
+		this.currentBasketItems = basketItems;
 		this.cardCategory = data.category;
 		this._cardTitle.textContent = data.title;
 		this._cardImage.src = data.image;
@@ -46,17 +49,15 @@ export class ProductPreview extends ProductView implements ICard {
 		if (!data.price) {
 			this.button.textContent = 'Недоступно';
 			this.button.setAttribute('disabled', 'true');
-			this.button.removeAttribute('data-in-basket');
 		} else if (inBasket) {
 			this.button.textContent = 'Удалить из корзины';
 			this.button.removeAttribute('disabled');
-			this.button.dataset.inBasket = 'true';
 		} else {
 			this.button.textContent = 'Купить';
 			this.button.removeAttribute('disabled');
-			this.button.dataset.inBasket = 'false';
 		}
 
 		return this._cardElement;
 	}
 }
+

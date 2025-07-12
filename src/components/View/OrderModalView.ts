@@ -32,8 +32,8 @@ export class OrderModalView {
 
 export class PaymentModalView extends FormView {
 	buttonAll: HTMLButtonElement[];
-	paymentSelection = '';
-	private touchedAddress = false;
+	private currentAddress = '';
+	private currentPayment = '';
 
 	constructor(template: HTMLTemplateElement, events: IEvents) {
 		super(template, events, {
@@ -45,14 +45,14 @@ export class PaymentModalView extends FormView {
 		this.buttonAll = Array.from(this.form.querySelectorAll('.button_alt'));
 		this.buttonAll.forEach((item) => {
 			item.addEventListener('click', () => {
-				this.touchedAddress = true;
+				this.currentPayment = item.name;
 				this.events.emit('payment:select', { method: item.name });
-				this.updateButtonState();
 			});
 		});
 		this.form.addEventListener('input', (event: Event) => {
 			const target = event.target as HTMLInputElement;
 			if (target && target.name === 'address') {
+				this.currentAddress = target.value;
 				this.events.emit('order:changeAddress', {
 					field: 'address',
 					value: target.value,
@@ -61,43 +61,26 @@ export class PaymentModalView extends FormView {
 		});
 		this.form.addEventListener('submit', (event: Event) => {
 			event.preventDefault();
-			if (this.submitButton.disabled) {
-				return;
-			}
-			this.events.emit('contacts:open');
+			this.events.emit('order:submit');
 		});
 	}
 
 	updatePaymentSelection(method: string) {
-		this.paymentSelection = method;
 		this.buttonAll.forEach((btn) => {
 			btn.classList.toggle('button_alt-active', btn.name === method);
 		});
 	}
 
-	updateButtonState() {
-		const address = this.inputs.find((i) => i.name === 'address')?.value.trim() || '';
-		const paymentSelected = this.buttonAll.some((btn) => btn.classList.contains('button_alt-active'));
-		let valid = true;
-		let error = '';
+	setError(error: string) {
+		super.setError(error);
+	}
 
-		if (!address) {
-			valid = false;
-			if (this.touchedAddress) error = 'Необходимо указать адрес';
-		} else if (!paymentSelected) {
-			valid = false;
-			error = 'Необходимо выбрать способ оплаты';
-		}
-
-		this.setError(error);
-		this.submitButton.disabled = !valid;
+	setSubmitEnabled(enabled: boolean) {
+		this.submitButton.disabled = !enabled;
 	}
 }
 
 export class ContactsModalView extends FormView {
-	private touchedEmail = false;
-	private touchedPhone = false;
-
 	constructor(template: HTMLTemplateElement, events: IEvents) {
 		super(template, events, {
 			form: '.form',
@@ -110,57 +93,20 @@ export class ContactsModalView extends FormView {
 				const target = event.target as HTMLInputElement;
 				const field = target.name;
 				const value = target.value;
-				this.events.emit(`contacts:changeInput`, { field, value });
-				this.updateButtonState();
-			});
-			item.addEventListener('blur', (event) => {
-				const target = event.target as HTMLInputElement;
-				if (target.name === 'email') {
-					this.touchedEmail = true;
-				} else if (target.name === 'phone') {
-					this.touchedPhone = true;
-				}
-				this.updateButtonState();
+				this.events.emit('contacts:changeInput', { field, value });
 			});
 		});
 		this.form.addEventListener('submit', (event: Event) => {
 			event.preventDefault();
-			this.events.emit('success:open');
+			this.events.emit('contacts:submit');
 		});
-		this.updateButtonState();
 	}
 
-	validateEmail(email: string): boolean {
-		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+	setError(error: string) {
+		super.setError(error);
 	}
 
-	validatePhone(phone: string): boolean {
-		
-		const digits = phone.replace(/\D/g, '');
-		return digits.length >= 10;
-	}
-
-	updateButtonState() {
-		const email = this.inputs.find((i) => i.name === 'email')?.value.trim() || '';
-		const phone = this.inputs.find((i) => i.name === 'phone')?.value.trim() || '';
-		let valid = true;
-		let error = '';
-
-		if (!email) {
-			valid = false;
-			if (phone) error = 'Необходимо указать email';
-		} else if (!this.validateEmail(email)) {
-			valid = false;
-			if (this.touchedEmail) error = 'Некорректный email';
-		} else if (!phone) {
-			valid = false;
-			if (this.touchedPhone) error = 'Необходимо указать телефон';
-		} else if (!this.validatePhone(phone)) {
-			valid = false;
-			if (this.touchedPhone) error = 'Некорректный телефон';
-		}
-
-		this.setError(error);
-		this.submitButton.disabled = !valid;
+	setSubmitEnabled(enabled: boolean) {
+		this.submitButton.disabled = !enabled;
 	}
 }

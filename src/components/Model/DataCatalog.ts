@@ -26,4 +26,8 @@ export class DataCatalog implements IDataCatalogContract {
 		this.selectedProduct = product;
 		this.events.emit('modalProduct:open', product);
 	}
+
+	isValidProduct(item: IProduct): boolean {
+		return !!item && !!item.id && !!item.title;
+	}
 }

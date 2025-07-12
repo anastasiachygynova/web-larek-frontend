@@ -1,7 +1,7 @@
 // Хорошая практика даже простые типы выносить в алиасы
 // Зато когда захотите поменять это достаточно сделать в одном месте
 type EventName = string | RegExp;
-type Subscriber = Function;
+type Subscriber = (data?: unknown) => void;
 type EmitterEvent = {
 	eventName: string;
 	data: unknown;
@@ -38,7 +38,7 @@ export class EventEmitter implements IEvents {
 		if (!this._events.has(eventName)) {
 			this._events.set(eventName, new Set<Subscriber>());
 		}
-		this._events.get(eventName)?.add(callback);
+		this._events.get(eventName)?.add(callback as Subscriber);
 	}
 
 	/**

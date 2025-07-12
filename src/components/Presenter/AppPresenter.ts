@@ -8,12 +8,13 @@ import { ApiModel } from '../Model/ApiModel';
 import { BasketModel } from '../Model/BasketModel';
 import { OrderForm } from '../Model/OrderForm';
 import { IProduct } from '../../types';
-import { ensureElement } from '../../utils/utils';
 import { DataCatalog } from '../Model/DataCatalog';
 import { OrderModalView } from '../View/OrderModalView';
+import { HeaderView } from '../View/HeaderView';
+import { MainPageView } from '../View/MainPageView';
+import { ProductView } from '../View/ProductView';
 
 export class AppPresenter {
-	private products: IProduct[] = [];
 	private basketView: BasketView;
 	private eventEmitter: EventEmitter;
 	private apiModel: ApiModel;
@@ -21,64 +22,97 @@ export class AppPresenter {
 	private dataCatalog: DataCatalog;
 	private modal: ModalView;
 	private orderForm: OrderForm;
-	private currentPaymentModalView: any = null;
-	private currentContactsModalView: any = null;
+	private headerView: HeaderView;
+	private currentPaymentModalView: PaymentModalView | null = null;
+	private currentContactsModalView: ContactsModalView | null = null;
+	private mainPageView: MainPageView;
+	private tplCardCatalog: HTMLTemplateElement;
+	private tplProductPreview: HTMLTemplateElement;
+	private tplCardBasket: HTMLTemplateElement;
+	private tplOrder: HTMLTemplateElement;
+	private tplContacts: HTMLTemplateElement;
+	private tplSuccess: HTMLTemplateElement;
+	private orderModalView: OrderModalView;
 
 	constructor(
 		eventEmitter: EventEmitter,
 		apiModel: ApiModel,
 		basketModel: BasketModel,
-		dataModel: DataCatalog
+		dataModel: DataCatalog,
+		orderForm: OrderForm,
+		basketView: BasketView,
+		modalView: ModalView,
+		headerView: HeaderView,
+		mainPageView: MainPageView,
+		tplCardCatalog: HTMLTemplateElement,
+		templates: {
+			tplProductPreview: HTMLTemplateElement;
+			tplCardBasket: HTMLTemplateElement;
+			tplOrder: HTMLTemplateElement;
+			tplContacts: HTMLTemplateElement;
+			tplSuccess: HTMLTemplateElement;
+		},
+		modalContent: HTMLElement
 	) {
 		this.eventEmitter = eventEmitter;
 		this.apiModel = apiModel;
 		this.basketModel = basketModel;
 		this.dataCatalog = dataModel;
-		this.orderForm = new OrderForm(eventEmitter);
-		const headerButton = document.querySelector(
-			'.header__basket'
-		) as HTMLButtonElement;
-		const headerCounter = document.querySelector(
-			'.header__basket-counter'
-		) as HTMLElement;
-		this.basketView = new BasketView(
-			document.querySelector('#basket') as HTMLTemplateElement,
-			eventEmitter,
-			headerButton,
-			headerCounter
-		);
-		this.modal = new ModalView(
-			ensureElement<HTMLElement>('#modal-container'),
-			eventEmitter
-		);
+		this.orderForm = orderForm;
+		this.basketView = basketView;
+		this.modal = modalView;
+		this.headerView = headerView;
+		this.mainPageView = mainPageView;
+		this.tplCardCatalog = tplCardCatalog;
+		this.tplProductPreview = templates.tplProductPreview;
+		this.tplCardBasket = templates.tplCardBasket;
+		this.tplOrder = templates.tplOrder;
+		this.tplContacts = templates.tplContacts;
+		this.tplSuccess = templates.tplSuccess;
+		this.orderModalView = new OrderModalView(modalContent);
 		this.init();
 		this.setupEventListeners();
 	}
 
-	private isValidProduct(item: IProduct): boolean {
-		return !!item && !!item.id && !!item.title;
-	}
-
 	private async init() {
 		try {
-			this.products = await this.apiModel.getProductList();
-			this.products = this.products.filter(this.isValidProduct);
-			this.dataCatalog.products = this.products;
+			const products = await this.apiModel.getProductList();
+			this.dataCatalog.products = products;
+
+			const cards = this.dataCatalog.products.map((product) => {
+				const card = new ProductView(this.tplCardCatalog, this.eventEmitter, {
+					onClick: () => this.eventEmitter.emit('card:select', product),
+				});
+				return card.render(product);
+			});
+			this.mainPageView.setProducts(cards);
 			this.setupBasketButton();
 		} catch (error) {
-			// Ошибка загрузки товаров
+			console.error('Ошибка загрузки товаров:', error);
 		}
 	}
 
 	private setupEventListeners() {
 		const on = this.eventEmitter.on.bind(this.eventEmitter);
 
-		on('basket:update', this.updateBasketCounter.bind(this));
-		on('card:select', (item: IProduct) => this.isValidProduct(item) && this.openProductModal(item));
+		this.basketModel.eventEmitter.on('basket:changed', () => {
+			this.updateBasketCounter();
+			if (
+				this.modal.content &&
+				this.modal.content.classList.contains('basket')
+			) {
+				this.openBasketModal();
+			}
+		});
+
+		on(
+			'card:select',
+			(item: IProduct) =>
+				this.dataCatalog.isValidProduct(item) && this.openProductModal(item)
+		);
 		on('card:addBasket', (item: IProduct) => {
-			if (this.isValidProduct(item)) {
+			if (this.dataCatalog.isValidProduct(item)) {
 				this.basketModel.addProduct(item);
-				this.updateBasketCounter();
 				this.modal.close();
 			}
 		});
@@ -94,82 +128,83 @@ export class AppPresenter {
 			this.basketModel.clear();
 			this.orderForm.clear();
 			this.updateBasketCounter();
+			if (
+				this.modal.content &&
+				this.modal.content.classList.contains('basket')
+			) {
+				this.openBasketModal();
+			}
 		});
-		on('order:paymentSelection', (button: HTMLButtonElement) => {
-			this.orderForm.setPayment(button.name);
-			this.currentPaymentModalView?.updateButtonState();
+
+		on('payment:select', (payload: { method: string }) => {
+			this.orderForm.setPayment(payload.method);
+			this.updatePaymentModalValidation();
 		});
+
 		on('order:changeAddress', (data: { field: string; value: string }) => {
 			if (data.field === 'address') {
 				this.orderForm.setAddress(data.value);
-				this.currentPaymentModalView?.updateButtonState();
+				this.updatePaymentModalValidation();
 			}
 		});
+
 		on('contacts:changeInput', (data: { field: string; value: string }) => {
 			if (data.field === 'email') this.orderForm.setEmail(data.value);
 			else if (data.field === 'phone') this.orderForm.setPhone(data.value);
+			this.updateContactsModalValidation();
 		});
-		on('formErrors:address', (errors: any) => {
-			this.currentPaymentModalView && this.handleFormErrors(errors, this.currentPaymentModalView.buttonSubmit);
-		});
-		on('formErrors:change', (payload: any) => {
-			this.currentContactsModalView && this.handleFormErrors(payload.errors, this.currentContactsModalView.buttonSubmit, payload.isValid);
-		});
+
 		on('card:removeBasket', (item: IProduct) => {
-			if (this.isValidProduct(item)) {
+			if (this.dataCatalog.isValidProduct(item)) {
 				this.basketModel.removeProduct(item);
-				this.updateBasketCounter();
 				this.openProductModal(item);
 			}
 		});
 	}
 
-	private createBasketItemElement(item: IProduct, index: number, tplCardBasket: HTMLTemplateElement): HTMLElement | null {
-		if (!this.isValidProduct(item)) return null;
-		const cardElement = tplCardBasket.content.querySelector('.basket__item').cloneNode(true) as HTMLElement;
-		cardElement.querySelector('.basket__item-index').textContent = String(index + 1);
-		cardElement.querySelector('.card__title').textContent = item.title;
-		cardElement.querySelector('.card__price').textContent = `${item.price ?? 0} синапсов`;
-		cardElement.querySelector('.basket__item-delete').addEventListener('click', () => {
-			this.basketModel.removeProduct(item);
-			this.updateBasketCounter();
-			this.openBasketModal();
-		});
-		return cardElement;
+	private updatePaymentModalValidation() {
+		if (this.currentPaymentModalView) {
+			this.currentPaymentModalView.updatePaymentSelection(
+				this.orderForm.payment || ''
+			);
+			const { errors, isValid } = this.orderForm.validatePaymentStep();
+
+			let errorMsg = '';
+			if (!this.orderForm.address) {
+				errorMsg = errors.address || '';
+			} else {
+				errorMsg = errors.payment || errors.address || '';
+			}
+			this.currentPaymentModalView.setError(errorMsg);
+			this.currentPaymentModalView.setSubmitEnabled(isValid);
+		}
+	}
+
+	private updateContactsModalValidation() {
+		if (this.currentContactsModalView) {
+			const { errors, isValid } = this.orderForm.validateContactsStep();
+			this.currentContactsModalView.setError(
+				errors.email || errors.phone || ''
+			);
+			this.currentContactsModalView.setSubmitEnabled(isValid);
+		}
 	}
 
 	private setupBasketButton() {
-		const basketButton = document.querySelector('.header__basket');
-		if (basketButton) {
-			basketButton.addEventListener('click', () => {
-				this.eventEmitter.emit('basket:open');
-			});
-			this.updateBasketCounter();
-		}
+		this.headerView.updateBasketCounter(this.basketModel.getCount());
 	}
 
 	private updateBasketCounter() {
-		if (this.basketView.headerCounter) {
-			this.basketView.headerCounter.textContent = this.basketModel
-				.getCount()
-				.toString();
-		}
+		this.headerView.updateBasketCounter(this.basketModel.getCount());
 	}
 
 	private openProductModal(item: IProduct) {
-		if (!this.isValidProduct(item)) {
-			return;
-		}
-
-		const tplProductPreview = document.querySelector(
-			'#card-preview'
-		) as HTMLTemplateElement;
-		if (!tplProductPreview) {
+		if (!this.dataCatalog.isValidProduct(item)) {
 			return;
 		}
 
 		const productPreview = new ProductPreview(
-			tplProductPreview,
+			this.tplProductPreview,
 			this.eventEmitter
 		);
 
@@ -180,170 +215,89 @@ export class AppPresenter {
 	private openBasketModal() {
 		this.basketModel.cleanInvalidItems();
 		const basketItems = this.basketModel.items;
-		const tplCardBasket = this.getTemplate('#card-basket');
-		if (!tplCardBasket) return;
-		const itemElements = basketItems
-			.map((item, index) => this.createBasketItemElement(item, index, tplCardBasket))
-			.filter(Boolean) as HTMLElement[];
-		this.basketView.items = itemElements;
+
+		this.basketView.setItems(
+			basketItems,
+			(item) => {
+				this.basketModel.removeProduct(item);
+				this.updateBasketCounter();
+				this.refreshBasketModal();
+			},
+			this.tplCardBasket
+		);
+		this.basketView.updateTotalPrice(this.basketModel.getTotal());
+		this.modal.content = this.basketView.render();
+		this.modal.render();
+	}
+
+	private refreshBasketModal() {
+		const basketItems = this.basketModel.items;
+		this.basketView.setItems(
+			basketItems,
+			(item) => {
+				this.basketModel.removeProduct(item);
+				this.updateBasketCounter();
+				this.refreshBasketModal();
+			},
+			this.tplCardBasket
+		);
 		this.basketView.updateTotalPrice(this.basketModel.getTotal());
 		this.modal.content = this.basketView.render();
 		this.modal.render();
 	}
 
 	private openOrderModal() {
-		const modalContent = document.querySelector(
-			'#modal-container .modal__content'
-		) as HTMLElement;
-		const orderModalView = new OrderModalView(modalContent);
-
-		const tplOrder = this.getTemplate('#order');
-		const tplContacts = this.getTemplate('#contacts');
-		const paymentView = new PaymentModalView(tplOrder, this.eventEmitter);
-		const contactsView = new ContactsModalView(tplContacts, this.eventEmitter);
-
-		this.currentPaymentModalView = paymentView;
-
-		const presenter = new OrderModalPresenter(
-			orderModalView,
-			paymentView,
-			contactsView,
-			this.orderForm,
+		const paymentView = new PaymentModalView(this.tplOrder, this.eventEmitter);
+		const contactsView = new ContactsModalView(
+			this.tplContacts,
 			this.eventEmitter
 		);
-		presenter.start();
+
+		this.currentPaymentModalView = paymentView;
+		this.currentContactsModalView = contactsView;
+
+		this.orderModalView.show(paymentView.render());
+
+		paymentView.form.addEventListener('submit', (e: Event) => {
+			e.preventDefault();
+			const { isValid } = this.orderForm.validatePaymentStep();
+			if (isValid) {
+				this.orderModalView.show(contactsView.render());
+			}
+		});
+
+		contactsView.form.addEventListener('submit', (e: Event) => {
+			e.preventDefault();
+			const { isValid } = this.orderForm.validateContactsStep();
+			if (isValid) {
+				this.eventEmitter.emit('success:open');
+			}
+		});
+
+		this.updatePaymentModalValidation();
 		this.modal.open();
 	}
 
 	private openContactsModal() {
-		const tplContacts = this.getTemplate('#contacts');
-		if (!tplContacts) return;
-		const contactsModal = new ContactsModalView(tplContacts, this.eventEmitter);
+		const contactsModal = new ContactsModalView(
+			this.tplContacts,
+			this.eventEmitter
+		);
 		this.currentContactsModalView = contactsModal;
 		this.modal.content = contactsModal.render();
 		this.modal.render();
 	}
 
 	private openSuccessModal() {
-		const tplSuccess = document.querySelector(
-			'#success'
-		) as HTMLTemplateElement;
-		if (!tplSuccess) {
-			return;
-		}
-
-		const successModal = new OrderSuccessModal(tplSuccess, this.eventEmitter);
+		const successModal = new OrderSuccessModal(
+			this.tplSuccess,
+			this.eventEmitter
+		);
 		this.modal.content = successModal.render(this.basketModel.getTotal());
 		this.modal.render();
 	}
 
 	private fillOrderForm() {
 		this.basketModel.cleanInvalidItems();
-	}
-
-	private showFormErrors(errors: Record<string, string>) {
-		const errorsElement = document.querySelector(
-			'.form__errors'
-		) as HTMLElement;
-		if (errorsElement) {
-			if (Object.keys(errors).length > 0) {
-				const errorMessages = Object.values(errors).join(', ');
-				errorsElement.textContent = errorMessages;
-				errorsElement.style.display = 'block';
-			} else {
-				errorsElement.textContent = '';
-				errorsElement.style.display = 'none';
-			}
-		}
-	}
-
-	private getTemplate(selector: string): HTMLTemplateElement | null {
-		const tpl = document.querySelector(selector) as HTMLTemplateElement;
-		return tpl || null;
-	}
-
-	private handleFormErrors(
-		errors: Record<string, string>,
-		button: HTMLButtonElement | null,
-		isValid?: boolean
-	) {
-		if (button) {
-			button.disabled =
-				typeof isValid === 'boolean'
-					? !isValid
-					: Object.keys(errors).length !== 0;
-		}
-		if (
-			this.currentContactsModalView &&
-			typeof this.currentContactsModalView.setError === 'function'
-		) {
-			const errorMessages = Object.values(errors).filter(Boolean).join(', ');
-			if (Object.keys(errors).length > 0) {
-				this.currentContactsModalView.setError(errorMessages);
-			} else if (isValid) {
-				if (typeof this.currentContactsModalView.clearError === 'function') {
-					this.currentContactsModalView.clearError();
-				}
-			}
-		} else {
-			this.showFormErrors(errors);
-		}
-	}
-}
-
-class OrderModalPresenter {
-	private view: OrderModalView;
-	private paymentView: PaymentModalView;
-	private contactsView: ContactsModalView;
-	private orderForm: OrderForm;
-	private eventEmitter: EventEmitter;
-
-	constructor(
-		view: OrderModalView,
-		paymentView: PaymentModalView,
-		contactsView: ContactsModalView,
-		orderForm: OrderForm,
-		eventEmitter: EventEmitter
-	) {
-		this.view = view;
-		this.paymentView = paymentView;
-		this.contactsView = contactsView;
-		this.orderForm = orderForm;
-		this.eventEmitter = eventEmitter;
-
-		this.paymentView.formElement.addEventListener('submit', (e: Event) => {
-			e.preventDefault();
-			this.showContacts();
-		});
-		this.contactsView.formElement.addEventListener('submit', (e: Event) => {
-			e.preventDefault();
-		});
-
-		this.eventEmitter.on('payment:select', (payload: { method: string }) => {
-			this.orderForm.setPayment(payload.method);
-			this.paymentView.updatePaymentSelection(this.orderForm.payment);
-			this.paymentView.updateButtonState();
-		});
-
-		this.eventEmitter.on('formErrors:address', (errors: any) => {
-			const isValid =
-				Object.keys(errors).length === 0 &&
-				!!this.orderForm.payment &&
-				!!this.orderForm.address;
-			this.paymentView.valid = isValid;
-		});
-	}
-
-	start() {
-		this.showPayment();
-		this.paymentView.updateButtonState();
-	}
-
-	showPayment() {
-		this.view.show(this.paymentView.render());
-	}
-
-	showContacts() {
-		this.view.show(this.contactsView.render());
 	}
 }

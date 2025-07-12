@@ -13,8 +13,13 @@ export class ModalView implements IModal {
 	protected closeButton: HTMLButtonElement;
 	protected _content: HTMLElement;
 	protected _pageWrapper: HTMLElement;
+	private _isSuccess = false;
 
-	constructor(modalContainer: HTMLElement, protected events: IEvents) {
+	constructor(
+		modalContainer: HTMLElement,
+		pageWrapper: HTMLElement,
+		protected events: IEvents
+	) {
 		this.modalContainer = modalContainer;
 		this.closeButton = modalContainer.querySelector(
 			'.modal__close'
@@ -22,7 +27,7 @@ export class ModalView implements IModal {
 		this._content = modalContainer.querySelector(
 			'.modal__content'
 		) as HTMLElement;
-		this._pageWrapper = document.querySelector('.page__wrapper') as HTMLElement;
+		this._pageWrapper = pageWrapper;
 
 		this.closeButton.addEventListener('click', this.close.bind(this));
 		this.modalContainer.addEventListener('click', this.close.bind(this));
@@ -30,7 +35,6 @@ export class ModalView implements IModal {
 			.querySelector('.modal__container')
 			.addEventListener('click', (event) => event.stopPropagation());
 
-		
 		document.addEventListener('keydown', (event) => {
 			if (
 				event.key === 'Escape' &&
@@ -43,8 +47,10 @@ export class ModalView implements IModal {
 
 	set content(value: HTMLElement | null) {
 		if (value) {
+			this._isSuccess = value.classList.contains('order-success');
 			this._content.replaceChildren(value);
 		} else {
+			this._isSuccess = false;
 			this._content.replaceChildren();
 		}
 	}
@@ -56,11 +62,11 @@ export class ModalView implements IModal {
 	}
 
 	close(): void {
-		const isSuccessModal = this._content.querySelector('.order-success');
 		this.modalContainer.classList.remove('modal_active');
+		const wasSuccess = this._isSuccess;
 		this.content = null;
 		this.locked = false;
-		if (isSuccessModal) {
+		if (wasSuccess) {
 			this.events.emit('success:close');
 		} else {
 			this.events.emit('modal:close');
